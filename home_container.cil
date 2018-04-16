@@ -1,0 +1,9 @@
+(block home_container
+	(blockinherit container)
+	(allow process user_home_dir_t (file (getattr setattr ioctl map open write read)))
+	(allow process user_home_dir_t (dir (getattr setattr ioctl map open write read)))
+	(allow process home_root_t (dir (getattr setattr ioctl map open write read)))
+	(allow process user_home_t (file (getattr setattr ioctl map open write read)))
+	(allow process user_home_t (dir (getattr setattr ioctl map open write read)))
+)
+
