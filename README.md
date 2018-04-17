@@ -30,44 +30,91 @@ Make sure that SELinux is in Enforcing mode
 
 ### Home directory access
 
-
 The following command will run the latest system fedora container in container.process domain (alias for container_t), which is general type for containers shipped in container-selinux package.
 
-    # podman run -v /home:/home --security-opt label=type:container.process -i -t fedora bash
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit container)
+    )
+
+    # semodule -i my_container.cil
+
+    # podman run -v /home:/home --security-opt label=type:my_container.process -i -t fedora bash
     [root@2578c94cdd73 /]# cd /home
     [root@2578c94cdd73 home]# ls
     ls: cannot open directory '.': Permission denied
 
 
-Note: container.process domain *CANNOT* access home_root_t dirs/objests so sesearch won't find any allow rule related to this access
+Note: container namespace *CANNOT* access home_root_t dirs/objests so sesearch won't find any allow rule related to this access
 
-    # sesearch -A -s container.process -t home_root_t
+    # sesearch -A -s my_container.process -t home_root_t
 
 However, home_container.cil inherits rules from container namespace and adds several new rules to access /home dir
 
-    # sesearch -A -s home_container.process -t home_root_t
-    allow home_container.process home_root_t:dir { getattr ioctl map open read setattr write };
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit home_container)
+    )
 
-    # podman run -v /home:/home --security-opt label=type:home_container.process -i -t fedora bash
+    # semodule -i my_container.cil
+
+    # sesearch -A -s my_container.process -t home_root_t
+    allow my_container.process home_root_t:dir { getattr ioctl lock open read search };
+
+    # podman run -v /home:/home --security-opt label=type:my_container.process -i -t fedora bash
     [root@0469dc13f1a8 /]# cd /home
     [root@0469dc13f1a8 home]# ls
     lvrabec
+
+home_container.cil file provides also home_rw_container and home_manage_container for granting more permissions to confined container.
+
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit home_rw_container)
+    )
+
+    # semodule -i my_container.cil
+
+    # sesearch -A -s my_container.process -t home_root_t
+    allow my_container.process home_root_t:dir { add_name getattr ioctl link lock open read remove_name reparent search setattr write };
+
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit home_manage_container)
+    )
+
+    # semodule -i my_container.cil
+    # allow my_container.process home_root_t:dir { add_name create getattr ioctl link lock open read remove_name rename reparent rmdir search setattr unlink write };
 
 ### Network access
 
 The next example will explain the difference between generic container.process label and net_container. net_container inherits rules from container namespace and additionally allows network access.
 
-    # podman run --security-opt label=type:container.process -i -t fedora bash
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit container)
+    )
+
+    # semodule -i my_container.cil
+
+    # podman run --security-opt label=type:my_container.process -i -t fedora bash
     [root@ed342fdb6e42 /]# dnf check-update
     Error: Failed to synchronize cache for repo 'updates'
 
-Note: container.process domain *CANNOT* access http_port_t ports so sesearch won't find any allow rule related to this access
+Note: container namespace *CANNOT* access http_port_t ports so sesearch won't find any allow rule related to this access
 
-    # sesearch -A -s container.process -t http_port_t -c tcp_socket
+    # sesearch -A -s my_container.process -t http_port_t -c tcp_socket
 
-With net_container.process label we're able to connect to network and check for updates.
+With net_container namespace we're able to connect to network and check for updates.
 
-    # podman run --security-opt label=type:net_container.process -i -t fedora bash
+    $ cat my_container.cil
+    (block my_container
+	    (blockinherit net_container)
+    )
+
+    # semodule -i my_container.cil
+
+    # podman run --security-opt label=type:my_container.process -i -t fedora bash
     [root@ed342fdb6e42 /]# dnf check-update
     Fedora 27 - x86_64 - Updates                                              66 MB/s |  22 MB     00:00
     Fedora 27 - x86_64                                                        61 MB/s |  58 MB     00:00
@@ -75,9 +122,9 @@ With net_container.process label we're able to connect to network and check for 
     ...
 
 
-The following SELinux query confirms that net_container.process can access http_port_t
+The following SELinux query confirms that my_container.process can access http_port_t
 
-    # sesearch -A -s net_container.process -t http_port_t -c tcp_socket
+    # sesearch -A -s my_container.process -t http_port_t -c tcp_socket
     allow sandbox_net_domain port_type:tcp_socket { name_bind name_connect recv_msg send_msg };
 
 ### Merging 
@@ -87,7 +134,7 @@ There is a way to merge namespaces.
 
     $ cat my_container.cil
     (block my_container
-	    (blockinherit home_container)
+	    (blockinherit home_rw_container)
 	    (blockinherit net_container)
     )
 
@@ -96,7 +143,7 @@ There is a way to merge namespaces.
 Now, namespaces are merged, following sesearch queries confirms it.
 
     $ sesearch -A -s my_container.process -t home_root_t 
-    allow my_container.process home_root_t:dir { getattr ioctl map open read setattr write };
+    allow my_container.process home_root_t:dir { add_name getattr ioctl link lock open read remove_name reparent search setattr write };
 
     $ sesearch -A -s my_container.process -t http_port_t -c tcp_socket 
     allow sandbox_net_domain port_type:tcp_socket { name_bind name_connect recv_msg send_msg };
