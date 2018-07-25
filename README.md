@@ -127,6 +127,34 @@ The following SELinux query confirms that my_container.process can access http_p
     # sesearch -A -s my_container.process -t http_port_t -c tcp_socket
     allow sandbox_net_domain port_type:tcp_socket { name_bind name_connect recv_msg send_msg };
 
+### Log reader container
+
+The following container SELinux policy template will allow container read logs stored under /var/log.
+
+    $ cat logreader_container.cil
+    (block logreader_container
+        (blockinherit container)
+        (allow process var_t (dir (getattr search open)))
+        (allow process logfile (dir (ioctl read getattr lock search open)))
+        (allow process logfile (file (ioctl read getattr lock open map)))
+        (allow process auditd_log_t (dir (ioctl read getattr lock search open)))
+        (allow process auditd_log_t (file (ioctl read getattr lock open)))
+    )
+
+    # semodule -i logreader_container.cil
+
+    # podman run -v /var/log:/var/log --security-opt label=type:logreader_container.process -i -t fedora bash
+    # [root@fdc97ba59f66 /]# cd /var/log
+    # [root@fdc97ba59f66 log]# ls
+    ...
+
+For testing purposes, basic container policy do not allowing access to /var/log/
+
+    # podman run -v /var/log:/var/log --security-opt label=type:container.process -i -t fedora bash
+    [root@ffb8b43e7d9e /]# cd /var/log/
+    [root@ffb8b43e7d9e /]# ls
+    ls: cannot open directory '.': Permission denied
+
 ### Merging 
 
 Let's say, that you would like to merge net_container and home_container namespace to allow network access and also access to homedirs.
@@ -148,3 +176,22 @@ Now, namespaces are merged, following sesearch queries confirms it.
     $ sesearch -A -s my_container.process -t http_port_t -c tcp_socket 
     allow sandbox_net_domain port_type:tcp_socket { name_bind name_connect recv_msg send_msg };
 
+### Fluentd container
+
+Currently, fluentd Pods run as super privileged container, and this is too permisive.  The fluentd pod needs to be able to read the hosts /var/log among others mount points. The previous enforces to run the FluentD containers with the "privileged: true" flag which causes containers to run with "spc_t" selinux policy which is too permissive (It's unconfined from SELinux POV). Following policy brings tighten security to fluend pods:
+
+    $ cat fluentd_container.cil
+    (block fluentd_container
+    (blockinherit net_container)
+    (blockinherit logreader_container)
+    (allow process process (capability (fowner chown setgid setuid)))
+    )
+
+    $ semodule -i fluentd_container.cil
+
+    # podman run -v /var/log:/var/log --security-opt label=type:fluentd_container.process -i -t fluent/fluentd
+    2018-07-25 11:46:00 +0000 [info]: parsing config file is succeeded path="/fluentd/etc/fluent.conf"
+    2018-07-25 11:46:00 +0000 [warn]: [output_docker1] 'time_format' specified without 'time_key', will be ignored
+    2018-07-25 11:46:00 +0000 [warn]: [output1] 'time_format' specified without 'time_key', will be ignored
+    2018-07-25 11:46:00 +0000 [info]: using configuration file: <ROOT>
+    ...
