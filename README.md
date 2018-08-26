@@ -16,7 +16,7 @@ Container engine (e.g: podman) and sesearch tool for searching SELinux rules nee
     # semodule -i base_container.cil
     # semodule -i net_container.cil
     # semodule -i home_container.cil
-    # semodule -i logreader_container.cil
+    # semodule -i log_container.cil
 
 Make sure that SELinux is in Enforcing mode
 
@@ -129,8 +129,8 @@ The following SELinux query confirms that my_container.process can access http_p
 
 The following container SELinux policy template will allow container read logs stored under /var/log.
 
-    $ cat logreader_container.cil
-    (block logreader_container
+    $ cat log_container.cil
+    (block log_container
         (blockinherit container)
         (allow process var_t (dir (getattr search open)))
         (allow process logfile (dir (ioctl read getattr lock search open)))
@@ -139,9 +139,9 @@ The following container SELinux policy template will allow container read logs s
         (allow process auditd_log_t (file (ioctl read getattr lock open)))
     )
 
-    # semodule -i logreader_container.cil
+    # semodule -i log_container.cil
 
-    # podman run -v /var/log:/var/log --security-opt label=type:logreader_container.process -i -t fedora bash
+    # podman run -v /var/log:/var/log --security-opt label=type:log_container.process -i -t fedora bash
     # [root@fdc97ba59f66 /]# cd /var/log
     # [root@fdc97ba59f66 log]# ls
     ...
@@ -181,7 +181,7 @@ Currently, fluentd Pods run as super privileged container, and this is too permi
     $ cat fluentd_container.cil
     (block fluentd_container
     (blockinherit net_container)
-    (blockinherit logreader_container)
+    (blockinherit log_container)
     (allow process process (capability (fowner chown setgid setuid)))
     )
 
