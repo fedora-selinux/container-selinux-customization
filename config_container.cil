@@ -1,11 +1,18 @@
 (block config_container
     (blockinherit container)
 
-    (allow process configfile (dir (getattr search open)))
     (allow process configfile (dir (ioctl read getattr lock search open)))
     (allow process configfile (file (ioctl read getattr lock open)))
     (allow process configfile (lnk_file (read getattr)))
 
+)
+
+(block config_rw_container
+    (blockinherit config_container)
+
+    (allow process configfile (dir (ioctl read write getattr lock append open)))
+    (allow process configfile (file (ioctl read write getattr lock append open)))
+    (allow process configfile (lnk_file (ioctl read write getattr lock append open)))
 )
 
 (block config_manage_container
