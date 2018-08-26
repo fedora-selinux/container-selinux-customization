@@ -1,5 +1,8 @@
 (block home_container
 	(blockinherit container)
+
+    (allow process process (capability (dac_override )))
+
 	(allow process user_home_dir_t (dir (getattr search open read lock ioctl)))
 	(allow process home_root_t (dir (getattr search open read lock ioctl)))
     (allow process user_home_t (dir (getattr search open read lock ioctl)))
