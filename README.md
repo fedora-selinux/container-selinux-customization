@@ -17,6 +17,8 @@ Container engine (e.g: podman) and sesearch tool for searching SELinux rules nee
     # semodule -i net_container.cil
     # semodule -i home_container.cil
     # semodule -i log_container.cil
+    # semodule -i config_container.cil
+    # semodule -i tmp_container.cil
 
 Make sure that SELinux is in Enforcing mode
 
