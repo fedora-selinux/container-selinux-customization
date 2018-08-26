@@ -6,19 +6,17 @@ This repository contains a proof of concept demonstrating block inheritance via 
 
 Container engine (e.g: podman) and sesearch tool for searching SELinux rules need to be installed on your system.
 
-    # dnf install podman setools-console
-    # dnf remove -y container-selinux
+    # dnf install -y podman setools-console
+    # dnf install -y container-selinux
 
 ### Installing
 
     $ cd container-selinux-customization
 
-    # make
-
-    # semodule -i container_runtime.pp
-    # semodule -i container.cil
+    # semodule -i base_container.cil
     # semodule -i net_container.cil
     # semodule -i home_container.cil
+    # semodule -i logreader_container.cil
 
 Make sure that SELinux is in Enforcing mode
 
