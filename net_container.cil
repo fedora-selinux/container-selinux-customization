@@ -9,6 +9,8 @@
     (allow process process (tcp_socket (ioctl read getattr lock write setattr append bind connect getopt setopt shutdown create listen accept)))
     (allow process process (udp_socket (ioctl read getattr lock write setattr append bind connect getopt setopt shutdown create)))
 
+    (allow process proc_t (lnk_file (read)))
+
     (allow process node_t (node (tcp_recv tcp_send recvfrom sendto)))
     (allow process node_t (node (udp_recv recvfrom)))
     (allow process node_t (node (udp_send sendto)))
