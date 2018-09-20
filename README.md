@@ -2,6 +2,8 @@
 
 This repository contains a proof of concept demonstrating block inheritance via CIL namespaces, which allows better container separation.
 
+Prototype available here: https://github.com/wrabcak/udica
+
 ### Prerequisites
 
 Container engine (e.g: podman) and sesearch tool for searching SELinux rules need to be installed on your system.
